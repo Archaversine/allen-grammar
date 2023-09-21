@@ -15,6 +15,7 @@ Symbols in both the terminal and non-terminal states must not include:
 [newline]   separates rules
 """
 
+import random
 from typing import Set, List
 
 class CFGRule:
@@ -79,6 +80,9 @@ class CFG:
         """
         self._root = root
         self._rules = rules
+        self._rulemap = {r.name(): r.productions()
+                         for r
+                         in self._rules}
             
         # Compute terminal and nonterminal symbols.
         self._nonterminals = set([r.name() for r in self._rules])
@@ -99,6 +103,10 @@ class CFG:
     def terminals(self):
         return self._terminals
 
+    def productions_of(self, rulename):
+        # TODO: add check and error message
+        return self._rulemap[rulename]
+
     def from_string(cfg_string: str):
         """Generates a CFG from a string of the format:
 
@@ -114,4 +122,52 @@ class CFG:
                  in cfg_string.splitlines()]
         root = rules[0].name()
         return CFG(root, set(rules))
+
+    def sample_sentence(self,
+                        max_recursion=5,
+                        capitalize=True,
+                        add_period=True,
+                        stopper_symbol="|x|"):
+
+        def sample_helper(curstate, curdepth):
+            """Sample a single production rule.
+            """
+            # TODO: turn this into sample_tree
+            if curdepth == max_recursion:
+                return stopper_symbol
+            # Sample production for current nonterminal state.
+            prods = self.productions_of(curstate)
+            production = random.choice(list(prods))
+            terminated_result = []
+            for symbol in production:
+                if symbol in self.nonterminals():
+                    recres = sample_helper(symbol, curdepth + 1)
+                    terminated_result.append(recres)
+                else:
+                    terminated_result.append(symbol)
+            return terminated_result
+
+        # Call the sample helper with root symbol.
+        # Returns a tree of terminal symbols (lists of lists).
+        sampled_term_tree = sample_helper(self.root(), 0)
+        
+        # Flatten tree, join with spaces, capitalize, and add period as
+        # required.
+        flat_terms = flatten(sampled_term_tree)
+        result_str = " ".join(flat_terms)
+        if capitalize:
+            result_str = result_str[:1].upper() + result_str[1:]
+        if add_period:
+            result_str += "."
+        return result_str
+
+
+def flatten(tree):
+    flat = []
+    for e in tree:
+        if type(e) == list:
+            flat.extend(flatten(e))
+        else:
+            flat.append(e)
+    return flat
 
