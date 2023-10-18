@@ -47,10 +47,13 @@ class herodotusInterpreter(herodotusVisitor):
     def visitTerminalSymbol(self, ctx:herodotusParser.TerminalSymbolContext):
         return Symbol(ctx.getText()[1:-1], is_terminal=True)
 
-    def generate_from_symbol(self, symbol: str) -> str:
+    def generate_from_symbol(self, symbol: str, max_rec=10, curr_rec=0) -> str:
         if symbol not in self.symbol_table:
             print(f"ERROR: Symbol {symbol} does not exist!")
             return ''
+
+        if curr_rec >= max_rec:
+            return "(recursion max)"
 
         output = ""
         symbol_expr = random.choice(self.symbol_table[symbol])
@@ -59,12 +62,14 @@ class herodotusInterpreter(herodotusVisitor):
             if s.is_terminal:
                 output += s.symbol_name + ' '
             else:
-                output += self.generate_from_symbol(s.symbol_name)
+                output += self.generate_from_symbol(s.symbol_name, max_rec, curr_rec+1)
 
         return output
 
 if __name__ == "__main__":
-    cfg_name      = "simple_sentence.cfg"
+    #cfg_name      = "simple_sentence.cfg"
+    #cfg_name      = "../pcfg/brown-tiny-20231017-211551.cfg"
+    cfg_name      = "../pcfg/brown-20231017-211731.cfg"
     target_symbol = 'S'
 
     input_stream = antlr.FileStream(cfg_name)
