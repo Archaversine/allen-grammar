@@ -14,13 +14,23 @@ class herodotusVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by herodotusParser#stmt.
-    def visitStmt(self, ctx:herodotusParser.StmtContext):
+    # Visit a parse tree produced by herodotusParser#unweightedStmt.
+    def visitUnweightedStmt(self, ctx:herodotusParser.UnweightedStmtContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by herodotusParser#weightedStmt.
+    def visitWeightedStmt(self, ctx:herodotusParser.WeightedStmtContext):
         return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by herodotusParser#symbolExpr.
     def visitSymbolExpr(self, ctx:herodotusParser.SymbolExprContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by herodotusParser#weightedSymbolExpr.
+    def visitWeightedSymbolExpr(self, ctx:herodotusParser.WeightedSymbolExprContext):
         return self.visitChildren(ctx)
 
 
