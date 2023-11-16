@@ -22,27 +22,16 @@ class ExceptionHook:
 sys.excepthook = ExceptionHook()
 
 
-BROWN_FILEPATH = "../../corpora/brown-corpus"
-OUTPUT_BASE = "brown"
+BROWN_FILEPATH = "../../corpora/brown-corpus-a"
+OUTPUT_BASE = "brown-a"
 COMMENT_STR = "*x*"
 # For now, just remove... later actually process properly.
 REMOVE_STRS = [
     "|",
-    "-",
-    "+",
     "[",
     "]",
-    "*",
-    "'",
     "`",
     "\\",
-    ",",
-    ".",
-    "$",
-    "&",
-    "%",
-    ";",
-    ":",
     "0",
     "1",
     "2",
@@ -53,8 +42,6 @@ REMOVE_STRS = [
     "7",
     "8",
     "9",
-    #"- ",
-    #"-N",
     "\x00",
 ]
 
@@ -86,7 +73,7 @@ def trees_from_file(filepath):
 def add_production_counts(counter_map, filepath):
     """
     Given a file of s-expression trees from the brown corpus counts productions.
-    
+
     These counts are added to counter_map, a multi-level dictionary:
         nonterminal -> production rule -> count
 
@@ -105,9 +92,6 @@ def nonterminal_production_str(nonterminal, rules):
     nonterminal_symbol = nonterminal.symbol()
     for remstr in REMOVE_STRS:
         nonterminal_symbol = nonterminal_symbol.replace(remstr, "")
-    # TODO: make this less strict. We lose important ones from this.
-    if nonterminal_symbol != nonterminal.symbol():    
-        return ""
 
     rule_strs = []
     for r in rules:
@@ -126,17 +110,6 @@ def nonterminal_production_str(nonterminal, rules):
             all_res.append(res)
         if len(all_res) > 0:
             rule_strs.append(' '.join(all_res))
-        #rule_str = ' '.join([
-        #    if s.symbol()
-        #    for s
-        #    in r.rhs()])
-        #rule_str = rule_str.replace("|", "")
-        #for remstr in REMOVE_STRS:
-        #    rule_str = rule_str.replace(remstr, "")
-        #if r.is_lexical():
-        #    rule_str = '"' + rule_str + '"'
-        #if rule_str != "":
-        #    rule_strs.append(rule_str)
     if len(rule_strs) > 0:
         joined_rule_str = ' | '.join(list(set(rule_strs)))
         if joined_rule_str == '':
@@ -152,9 +125,7 @@ def nonterminal_pcfg_str(nonterminal, rule_probs):
     nonterminal_symbol = nonterminal.symbol()
     for remstr in REMOVE_STRS:
         nonterminal_symbol = nonterminal_symbol.replace(remstr, "")
-    if nonterminal_symbol != nonterminal.symbol():    
-        return ""
-    
+
     rule_strs = []
     for r, prob in rule_probs.items():
         all_res = []
@@ -210,7 +181,7 @@ for f in os.listdir(BROWN_FILEPATH):
     if os.path.isfile(fp):
         print("traversing file: ", fp)
         add_production_counts(prod_counts, fp)
-        
+
 print("Computing production probabilities...")
 # Compute production conditional probabilities.
 # For each nonterminal, sum up production counts, and normalize production

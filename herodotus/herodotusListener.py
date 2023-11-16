@@ -17,12 +17,21 @@ class herodotusListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by herodotusParser#stmt.
-    def enterStmt(self, ctx:herodotusParser.StmtContext):
+    # Enter a parse tree produced by herodotusParser#unweightedStmt.
+    def enterUnweightedStmt(self, ctx:herodotusParser.UnweightedStmtContext):
         pass
 
-    # Exit a parse tree produced by herodotusParser#stmt.
-    def exitStmt(self, ctx:herodotusParser.StmtContext):
+    # Exit a parse tree produced by herodotusParser#unweightedStmt.
+    def exitUnweightedStmt(self, ctx:herodotusParser.UnweightedStmtContext):
+        pass
+
+
+    # Enter a parse tree produced by herodotusParser#weightedStmt.
+    def enterWeightedStmt(self, ctx:herodotusParser.WeightedStmtContext):
+        pass
+
+    # Exit a parse tree produced by herodotusParser#weightedStmt.
+    def exitWeightedStmt(self, ctx:herodotusParser.WeightedStmtContext):
         pass
 
 
@@ -32,6 +41,15 @@ class herodotusListener(ParseTreeListener):
 
     # Exit a parse tree produced by herodotusParser#symbolExpr.
     def exitSymbolExpr(self, ctx:herodotusParser.SymbolExprContext):
+        pass
+
+
+    # Enter a parse tree produced by herodotusParser#weightedSymbolExpr.
+    def enterWeightedSymbolExpr(self, ctx:herodotusParser.WeightedSymbolExprContext):
+        pass
+
+    # Exit a parse tree produced by herodotusParser#weightedSymbolExpr.
+    def exitWeightedSymbolExpr(self, ctx:herodotusParser.WeightedSymbolExprContext):
         pass
 
 
