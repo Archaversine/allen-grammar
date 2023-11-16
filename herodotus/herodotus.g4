@@ -14,7 +14,7 @@ symbol: '"' .*? '"' # terminalSymbol
       ;
 
 WEIGHT: [0-9] '.' [0-9]+ ;
-IDENTIFIER: [a-zA-Z_\-!@#$%^&*:;'<>,.][a-zA-Z0-9_\-!@#$%^&*:;'<>,.]* ;
+IDENTIFIER: [a-zA-Z_\-!@#$%^&*:;'<>,.?][a-zA-Z0-9_\-!@#$%^&*:;'<>,.?]* ;
 
 WS: [ \t\r\f] -> skip;
 COMMENT: '//' .*? '\n' -> skip;

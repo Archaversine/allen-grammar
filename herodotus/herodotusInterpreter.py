@@ -118,7 +118,7 @@ class herodotusInterpreter(herodotusVisitor):
 if __name__ == "__main__":
     #cfg_name      = "simple_sentence.cfg"
     #cfg_name      = "test.cfg"
-    cfg_name      = "question_mark_test.cfg"
+    cfg_name      = "hard_question_mark_test.cfg"
     #cfg_name      = "../pcfg/brown-20231017-211731.cfg"
     #cfg_name      = "../pcfg/brown-tiny-20231017-211551.pcfg"
     #cfg_name      = "../pcfg/brown-a-20231110-135456.cfg"
