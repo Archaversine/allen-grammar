@@ -6,6 +6,8 @@ import pdb
 import random
 import sys
 
+from contextlib import nullcontext
+
 from herodotusLexer import herodotusLexer
 from herodotusParser import herodotusParser
 from herodotusVisitor import herodotusVisitor
@@ -22,6 +24,20 @@ class ExceptionHook:
         return self.instance(*args, **kwargs)
 
 sys.excepthook = ExceptionHook()
+
+# Hide all prints within a context.
+# From https://stackoverflow.com/a/45669280
+# Usage:
+#   with HiddenPrints():
+#       print("This will not be printed")
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 class Symbol:
     def __init__(self, symbol_name: str, is_terminal: bool):
@@ -134,41 +150,45 @@ class herodotusInterpreter(herodotusVisitor):
 
         return output
 
-def build_tree(cfg_path):
+def build_tree(cfg_path, silent=False):
     """Build a parse tree from a CFG/PCFG file.
     """
-    print("Building parse tree from {}...".format(cfg_path))
-    input_stream = antlr.FileStream(cfg_path)
-    print("Building Lexer...")
-    lexer = herodotusLexer(input_stream)
-    print("Building Parser...")
-    stream = antlr.CommonTokenStream(lexer)
-    parser = herodotusParser(stream)
-    print("Building Tree...")
-    tree = parser.prog()
-    print("Tree built!")
+
+    with HiddenPrints() if silent else nullcontext():
+        print("Building parse tree from {}...".format(cfg_path))
+        input_stream = antlr.FileStream(cfg_path)
+        print("Building Lexer...")
+        lexer = herodotusLexer(input_stream)
+        print("Building Parser...")
+        stream = antlr.CommonTokenStream(lexer)
+        parser = herodotusParser(stream)
+        print("Building Tree...")
+        tree = parser.prog()
+        print("Tree built!")
     return tree
 
-def save_tree(tree, tree_path):
+def save_tree(tree, tree_path, silent=False):
     """Save a parse tree to a file.
     """
-    print("Saving tree to {}...".format(tree_path))
-    # Make directory if it doesn't exist.
-    directory = os.path.dirname(tree_path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    # Write to file.
-    with open(tree_path, 'wb') as f:
-        pickle.dump(tree, f)
-    print("Tree saved!")
+    with HiddenPrints() if silent else nullcontext():
+        print("Saving tree to {}...".format(tree_path))
+        # Make directory if it doesn't exist.
+        directory = os.path.dirname(tree_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        # Write to file.
+        with open(tree_path, 'wb') as f:
+            pickle.dump(tree, f)
+        print("Tree saved!")
 
-def load_tree(tree_path):
+def load_tree(tree_path, silent=False):
     """Load a parse tree from a pickle file.
     """
-    print("Loading tree from {}...".format(tree_path))
-    with open(tree_path, 'rb') as f:
-        tree = pickle.load(f)
-    print("Tree loaded!")
+    with HiddenPrints() if silent else nullcontext():
+        print("Loading tree from {}...".format(tree_path))
+        with open(tree_path, 'rb') as f:
+            tree = pickle.load(f)
+        print("Tree loaded!")
     return tree
 
 
@@ -186,10 +206,10 @@ This script will generate a new CFG/PCFG tree from the given CFG/PCFG file and t
     error = args.error
 
     # Debugging arguments.
-    #cfg_path      = "cfg_tests/simple_sentence.cfg"
-    #cfg_path      = "cfg_tests/test.cfg"
-    #cfg_path      = "cfg_tests/numbered_symbols.cfg"
-    #cfg_path      = "cfg_tests/scientific_notation.cfg"
+    #cfg_path      = "test_cfgs/simple_sentence.cfg"
+    #cfg_path      = "test_cfgs/test.cfg"
+    #cfg_path      = "test_cfgs/numbered_symbols.cfg"
+    #cfg_path      = "test_cfgs/scientific_notation.cfg"
     #cfg_path      = "../pcfg/brown-20231017-211731.cfg"
     #cfg_path      = "../pcfg/brown-tiny-20231017-211551.pcfg"
     #cfg_path      = "../pcfg/brown-a-20231110-135456.cfg"
