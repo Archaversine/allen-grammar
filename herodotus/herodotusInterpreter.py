@@ -150,6 +150,9 @@ class herodotusInterpreter(herodotusVisitor):
 
         return output
 
+    def generate_sentence(self, symbols: List[str], max_rec=10, error=False) -> str:
+        return ''.join([self.generate_from_symbol(symbol, max_rec=max_rec, error=error) for symbol in symbols])
+
 def build_tree(cfg_path, silent=False):
     """Build a parse tree from a CFG/PCFG file.
     """
@@ -233,4 +236,5 @@ This script will generate a new CFG/PCFG tree from the given CFG/PCFG file and t
 
     print("Sampling Sentence...")
     print(f"Result: {visitor.generate_from_symbol(target_symbol, max_rec=10, error=error)}")
+    print(f"Sentence: {visitor.generate_sentence(['A', 'B', 'A'], max_rec=10, error=error)}")
 
