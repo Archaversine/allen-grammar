@@ -22,8 +22,8 @@ class ExceptionHook:
 sys.excepthook = ExceptionHook()
 
 
-BROWN_FILEPATH = "../../corpora/brown-corpus-a"
-OUTPUT_BASE = "brown-a"
+BROWN_FILEPATH = "../../corpora/brown-corpus"
+OUTPUT_BASE = "brown-all"
 COMMENT_STR = "*x*"
 # For now, just remove... later actually process properly.
 REMOVE_STRS = [
@@ -32,16 +32,16 @@ REMOVE_STRS = [
     "]",
     "`",
     "\\",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
+    #"0",
+    #"1",
+    #"2",
+    #"3",
+    #"4",
+    #"5",
+    #"6",
+    #"7",
+    #"8",
+    #"9",
     "\x00",
 ]
 
@@ -70,6 +70,17 @@ def trees_from_file(filepath):
     return trees
 
 
+def clean_symbol(symbol):
+    new_symbol = symbol
+    for remstr in REMOVE_STRS:
+        new_symbol = new_symbol.replace(remstr, "")
+
+    #if new_symbol != symbol:
+    #    print("Non-matching symbol: ", symbol, " -> ", new_symbol)
+    if "\x00" in symbol:
+        print("Symbol with null char: ", symbol, " -> ", new_symbol)
+    return new_symbol
+
 def add_production_counts(counter_map, filepath):
     """
     Given a file of s-expression trees from the brown corpus counts productions.
@@ -82,14 +93,16 @@ def add_production_counts(counter_map, filepath):
     trees = trees_from_file(filepath)
     for tree in trees:
         for prod in tree.productions():
-            if prod.lhs() not in counter_map:
-                counter_map[prod.lhs()] = Counter()
-            counter_map[prod.lhs()][prod] += 1
+            lhs = clean_symbol(prod.lhs().symbol())
+            if lhs not in counter_map:
+                counter_map[lhs] = Counter()
+            counter_map[lhs][prod] += 1
 
 def nonterminal_production_str(nonterminal, rules):
     """Nonterminal complete production rule.
     """
-    nonterminal_symbol = nonterminal.symbol()
+    #nonterminal_symbol = nonterminal.symbol()
+    nonterminal_symbol = nonterminal
     for remstr in REMOVE_STRS:
         nonterminal_symbol = nonterminal_symbol.replace(remstr, "")
 
@@ -122,9 +135,15 @@ def nonterminal_production_str(nonterminal, rules):
 def nonterminal_pcfg_str(nonterminal, rule_probs):
     # TODO(GENE): renormalize after filtering, probabilities won't sum to 1 now
     # b/c we compute probabilities before filtering production rules.
-    nonterminal_symbol = nonterminal.symbol()
+    #nonterminal_symbol = nonterminal.symbol()
+    nonterminal_symbol = nonterminal
     for remstr in REMOVE_STRS:
         nonterminal_symbol = nonterminal_symbol.replace(remstr, "")
+
+    #if nonterminal_symbol != nonterminal.symbol():
+    #    print("Non-matching nonterminal: ", nonterminal.symbol(), " -> ", nonterminal_symbol)
+    #if nonterminal_symbol != nonterminal:
+    #    print("Non-matching nonterminal: ", nonterminal, " -> ", nonterminal_symbol)
 
     rule_strs = []
     for r, prob in rule_probs.items():
@@ -158,7 +177,8 @@ def cfg_str(prod_counts):
     rule_strs = []
     for nt, rule_counts in prod_counts.items():
         # For now, ignore empty symbol (later we can insert dummy here)
-        if nt.symbol() != '':
+        #if nt.symbol() != '':
+        if nt != '':
             rule_strs.append(nonterminal_production_str(nt, rule_counts.keys()))
     return '\n'.join([rs for rs in rule_strs if rs != ''])
 
@@ -167,7 +187,8 @@ def pcfg_str(prod_probs):
     rule_strs = []
     for nt, rule_probs in prod_probs.items():
         # For now, ignore empty symbol (later we can insert dummy here)
-        if nt.symbol() != '':
+        #if nt.symbol() != '':
+        if nt != '':
             rule_strs.append(nonterminal_pcfg_str(nt, rule_probs))
     return '\n'.join([rs for rs in rule_strs if rs != ''])
 
