@@ -123,6 +123,28 @@ class GrammarTree:
 
         return "({} {})".format(symbol_name, " ".join(outputs))
 
+    def generate_from_format(self, format: str) -> str: 
+        tokens = format.split(' ')
+        reused_symbols = {}
+
+        output = ""
+
+        # Load reused symbols into dictionary
+        for token in tokens:
+            if token in reused_symbols: 
+                continue
+
+            if '|' in token:
+                reused_symbols[token] = self.generate_from_symbol(token.split('|')[0])
+
+        # Construct the actual sentence
+        for token in tokens:
+            if token in reused_symbols:
+                output += reused_symbols[token]
+            else:
+                output += self.generate_from_symbol(token)
+
+        return output
 
 def parse_file(file_path: str) -> GrammarTree:
     tree = GrammarTree()
@@ -132,4 +154,11 @@ def parse_file(file_path: str) -> GrammarTree:
             name, expr = parse_line(line)
             tree.symbols[name] = expr
 
-    return tree
+    return tree  
+
+if __name__ == '__main__':
+    tree = parse_file('cfg-test.cfg')
+    sentence = tree.generate_from_format("N|1 V N|1 N|2 N|2")
+
+    print(f"Sentence: {sentence}")
+
