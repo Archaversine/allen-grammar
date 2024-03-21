@@ -4,7 +4,7 @@ from random import choices, choice
 from pattern.en import conjugate, lemma
 
 # General structure of a symbol:
-# S -> 0.00 A B "C" | 0.00 D E F G | 0.00 "H" | 0.00 I 
+# S -> 0.00 A B "C" | 0.00 D E F G | 0.00 "H" | 0.00 I
 test_sentence = 'S -> 0.00 A B "C" | 0.00 D E F G | 0.00 "H" | 0.00 I'
 
 class Symbol:
@@ -35,6 +35,9 @@ class WeightedList:
     def random_symbol_expr(self) -> SymbolExpr:
         return choices(self.items, weights=self.weights)[0]
 
+    def exp_random_symbol_expr(self, exp) -> SymbolExpr:
+        return choices(self.items, weights=[w ** exp for w in self.weights])[0]
+
 def parse_line(line: str) -> Tuple[str, WeightedList]:
     name, rest = line.split('->', 1)
 
@@ -64,7 +67,7 @@ def parse_line(line: str) -> Tuple[str, WeightedList]:
     return (name, WeightedList(symbol_exprs, symbol_expr_weights))
 
 class GrammarTree:
-    
+
     def __init__(self):
         self.symbols: Dict[str, WeightedList] = {}
 
@@ -72,8 +75,8 @@ class GrammarTree:
         return f"GrammarTree({self.symbols})"
 
     def generate_from_symbol(self, symbol_name: str, max_rec=10, _curr_rec=0, error=False) -> str:
-        if symbol_name not in self.symbols: 
-            if error: 
+        if symbol_name not in self.symbols:
+            if error:
                 raise ValueError(f"Symbol '{symbol_name}' not found in grammar tree!")
             else:
                 print(f"ERROR: Symbol '{symbol_name}' not found in grammar tree!")
@@ -82,10 +85,10 @@ class GrammarTree:
         if _curr_rec >= max_rec:
             return '(recursion max)'
 
-        output = "" 
+        output = ""
         symbol_expr = self.symbols[symbol_name].random_symbol_expr()
 
-        for symbol in symbol_expr: 
+        for symbol in symbol_expr:
             if symbol.is_terminal:
                 output += symbol.symbol_name + ' '
             else:
@@ -96,11 +99,37 @@ class GrammarTree:
     def generate_from_sentence(self, symbol_names: List[str], max_rec=10, error=False) -> str:
         return ''.join([self.generate_from_symbol(name, max_rec, error) for name in symbol_names])
 
+    def generate_tree_from_symbol(self, symbol_name: str, max_rec=10, _curr_rec=0, error=False, exp=1) -> str:
+        if symbol_name not in self.symbols:
+            if error:
+                raise ValueError(f"Symbol '{symbol_name}' not found in grammar tree!")
+            else:
+                print(f"ERROR: Symbol '{symbol_name}' not found in grammar tree!")
+                return ''
+
+        if _curr_rec >= max_rec:
+            return '(recursion max)'
+
+        outputs = []
+        if exp != 1:
+            symbol_expr = self.symbols[symbol_name].exp_random_symbol_expr(exp)
+        else:
+            symbol_expr = self.symbols[symbol_name].random_symbol_expr()
+
+        for symbol in symbol_expr:
+            if symbol.is_terminal:
+                outputs.append(symbol.symbol_name)
+            else:
+                recres = self.generate_tree_from_symbol(symbol.symbol_name, max_rec, _curr_rec + 1, error)
+                outputs.append('({} {})'.format(symbol.symbol_name, recres))
+
+        return "({} {})".format(symbol_name, " ".join(outputs))
+      
     # Example: V|1#3sgp V|1
     # This generates the same verb twice. The first specifies a conjugation for 
     # both instances, and the second does not. 
     # Conjugation syntax: https://github.com/clips/pattern/wiki/pattern-en#verb-conjugation
-    def generate_from_format(self, format: str, error=False) -> str: 
+    def generate_from_format(self, format: str, error=False) -> str:
         tokens = format.split(' ')
         reused_symbols = {}
 
