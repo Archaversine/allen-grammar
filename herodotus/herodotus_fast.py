@@ -1,6 +1,8 @@
 from typing import List, Tuple, Dict
 from random import choices, choice
 
+from pattern.en import conjugate, lemma
+
 # General structure of a symbol:
 # S -> 0.00 A B "C" | 0.00 D E F G | 0.00 "H" | 0.00 I
 test_sentence = 'S -> 0.00 A B "C" | 0.00 D E F G | 0.00 "H" | 0.00 I'
@@ -122,8 +124,12 @@ class GrammarTree:
                 outputs.append('({} {})'.format(symbol.symbol_name, recres))
 
         return "({} {})".format(symbol_name, " ".join(outputs))
-
-    def generate_from_format(self, format: str) -> str: 
+      
+    # Example: V|1#3sgp V|1
+    # This generates the same verb twice. The first specifies a conjugation for 
+    # both instances, and the second does not. 
+    # Conjugation syntax: https://github.com/clips/pattern/wiki/pattern-en#verb-conjugation
+    def generate_from_format(self, format: str, error=False) -> str:
         tokens = format.split(' ')
         reused_symbols = {}
 
@@ -131,18 +137,30 @@ class GrammarTree:
 
         # Load reused symbols into dictionary
         for token in tokens:
-            if token in reused_symbols: 
+            token_identifier = token.split('#')[0]
+
+            if token_identifier in reused_symbols: 
                 continue
 
             if '|' in token:
-                reused_symbols[token] = self.generate_from_symbol(token.split('|')[0])
+                [name, tag] = token.split('|')
+
+                generated = self.generate_from_symbol(name, error=error)
+
+                if '#' in tag:
+                    conjugation = tag.split('#')[1]
+                    generated = conjugate(lemma(generated.rstrip()), conjugation) + ' '
+
+                reused_symbols[token_identifier] = generated
 
         # Construct the actual sentence
         for token in tokens:
-            if token in reused_symbols:
-                output += reused_symbols[token]
+            token_identifier = token.split('#')[0]
+
+            if token_identifier in reused_symbols:
+                output += reused_symbols[token_identifier]
             else:
-                output += self.generate_from_symbol(token)
+                output += self.generate_from_symbol(token_identifier, error=error)
 
         return output
 
@@ -156,9 +174,21 @@ def parse_file(file_path: str) -> GrammarTree:
 
     return tree  
 
+# There seems to be some internal problem with the internal pattern.en library
+# The first time you run conjugate(), it will throw an error. But after that, 
+# it will execute as expected. 
+def init_conjugation():
+    try: # Random conjugation to execute
+        conjugate('talk', '3sg')
+    except:
+        pass
+
 if __name__ == '__main__':
-    tree = parse_file('cfg-test.cfg')
-    sentence = tree.generate_from_format("N|1 V N|1 N|2 N|2")
+    init_conjugation()
+
+    #tree = parse_file('cfg-test.cfg')
+    tree = parse_file('verb-test.cfg')
+    sentence = tree.generate_from_format("V|1#3sgp V V|1")
 
     print(f"Sentence: {sentence}")
 
