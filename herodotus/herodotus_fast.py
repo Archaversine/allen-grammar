@@ -129,6 +129,7 @@ class GrammarTree:
     # This generates the same verb twice. The first specifies a conjugation for 
     # both instances, and the second does not. 
     # Conjugation syntax: https://github.com/clips/pattern/wiki/pattern-en#verb-conjugation
+    # Using a ' in front of a word will make it a terminal symbol
     def generate_from_format(self, format: str, error=False) -> str:
         tokens = format.split(' ')
         reused_symbols = {}
@@ -137,6 +138,9 @@ class GrammarTree:
 
         # Load reused symbols into dictionary
         for token in tokens:
+            if token.startswith("'"):
+                continue
+
             token_identifier = token.split('#')[0]
 
             if token_identifier in reused_symbols: 
@@ -155,6 +159,10 @@ class GrammarTree:
 
         # Construct the actual sentence
         for token in tokens:
+            if token.startswith("'"):
+                output += token[1:] + ' '
+                continue
+
             token_identifier = token.split('#')[0]
 
             if token_identifier in reused_symbols:
