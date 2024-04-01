@@ -5,10 +5,16 @@ import herodotus_fast as hero
 def precedes(tree: hero.GrammarTree, name1: str, name2: str) -> str:
     return tree.generate_from_format(f"'{name1} V|1#3sgp 'before '{name2} 'started 'to V|2#inf")
 
+def preceded_by(tree: hero.GrammarTree, name1: str, name2: str) -> str:
+    return precedes(tree, name2, name1)
+
 # Given two names, return a sentence where the first name commits an action 
 # that meets the action committed by the second name.
 def meets(tree: hero.GrammarTree, name1: str, name2: str) -> str:
     return tree.generate_from_format(f"'{name1} 'stops V|1#part 'as '{name2} 'starts 'to V|2#inf")
+
+def met_by(tree: hero.GrammarTree, name1: str, name2: str) -> str:
+    return meets(tree, name2, name1)
 
 if __name__ == '__main__':
     hero.init_conjugation()
