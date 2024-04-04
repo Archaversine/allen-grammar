@@ -32,10 +32,16 @@ class WeightedList:
     def __iter__(self):
         return iter(self.items)
 
-    def random_symbol_expr(self) -> SymbolExpr:
-        return choices(self.items, weights=self.weights)[0]
+    def random_symbol_expr(self, mask=None) -> SymbolExpr:
+        choice_weights = self.weights
+        if mask is not None:
+            choice_weights = [w*m for w, m in zip(self.weights, mask)]
+        return choices(self.items, weights=choice_weights)[0]
 
-    def exp_random_symbol_expr(self, exp) -> SymbolExpr:
+    def exp_random_symbol_expr(self, exp, mask=None) -> SymbolExpr:
+        choice_weights = self.weights
+        if mask is not None:
+            choice_weights = [w*m for w, m in zip(self.weights, mask)]
         return choices(self.items, weights=[w ** exp for w in self.weights])[0]
 
 def parse_line(line: str) -> Tuple[str, WeightedList]:
@@ -60,7 +66,7 @@ def parse_line(line: str) -> Tuple[str, WeightedList]:
                 curr_expr.append(Symbol(token, is_terminal=False))
 
         # Convert to tuple once expression is complete
-        symbol_exprs.append(tuple(curr_expr)) 
+        symbol_exprs.append(tuple(curr_expr))
         symbol_expr_weights.append(float(tokens[0]))
 
     return (name, WeightedList(symbol_exprs, symbol_expr_weights))
@@ -77,7 +83,13 @@ class GrammarTree:
     def __repr__(self) -> str:
         return f"GrammarTree({self.symbols})"
 
-    def generate_from_symbol(self, symbol_name: str, max_rec=10, _curr_rec=0, error=False) -> str:
+    def generate_from_symbol(self,
+                             symbol_name: str,
+                             max_rec=10,
+                             _curr_rec=0,
+                             error=False,
+                             max_size=-1) -> (str, int):
+
         if symbol_name not in self.symbols:
             if error:
                 raise ValueError(f"Symbol '{symbol_name}' not found in grammar tree!")
@@ -89,15 +101,49 @@ class GrammarTree:
             return '(recursion max)'
 
         output = ""
-        symbol_expr = self.symbols[symbol_name].random_symbol_expr()
+        size_mask = None
+        if max_size > 0:
+            size_mask = [self.expr_min_size(s) <= max_size
+                         for s
+                         in self.symbols[symbol_name].items]
+            if sum(size_mask) == 0:
+                raise ValueError(f"Symbol '{symbol_name}' cannot generate a sentence with maximum size {max_size}.")
+        symbol_expr = self.symbols[symbol_name].random_symbol_expr(size_mask)
 
-        for symbol in symbol_expr:
+        # Keep track of generated size.
+        # Will use this and minimum remaining requirements to compute current
+        # size availability.
+        min_list = [
+            (
+                self.symbol_min_size(s.symbol_name)
+                if not s.is_terminal
+                else 1
+            )
+            for s
+            in symbol_expr
+        ]
+        gen_size = 0
+        for i, symbol in enumerate(symbol_expr):
+            min_left = sum(min_list[i+1:]) # minimum requirements for following symbols
+
             if symbol.is_terminal:
                 output += symbol.symbol_name + ' '
-            else:
-                output += self.generate_from_symbol(symbol.symbol_name, max_rec, _curr_rec + 1, error)
+                gen_size += 1
 
-        return output
+            else:
+                if max_size > 0:
+                    available_size = max_size - gen_size - min_left # current availability
+                else:
+                    available_size = -1
+                recres, recsize = self.generate_from_symbol(symbol.symbol_name,
+                                                            max_rec,
+                                                            _curr_rec + 1,
+                                                            error,
+                                                            available_size)
+                output += recres
+                gen_size += recsize
+
+        return output, gen_size
 
     def generate_from_sentence(self, symbol_names: List[str], max_rec=10, error=False) -> str:
         return ''.join([self.generate_from_symbol(name, max_rec, error) for name in symbol_names])
@@ -127,10 +173,10 @@ class GrammarTree:
                 outputs.append('({} {})'.format(symbol.symbol_name, recres))
 
         return "({} {})".format(symbol_name, " ".join(outputs))
-      
+
     # Example: V|1#3sgp V|1
-    # This generates the same verb twice. The first specifies a conjugation for 
-    # both instances, and the second does not. 
+    # This generates the same verb twice. The first specifies a conjugation for
+    # both instances, and the second does not.
     # Conjugation syntax: https://github.com/clips/pattern/wiki/pattern-en#verb-conjugation
     # Using a ' in front of a word will make it a terminal symbol
     def generate_from_format(self, format: str, error=False) -> str:
@@ -146,7 +192,7 @@ class GrammarTree:
 
             token_identifier = token.split('#')[0]
 
-            if token_identifier in reused_symbols: 
+            if token_identifier in reused_symbols:
                 continue
 
             if '|' in token:
@@ -194,8 +240,10 @@ class GrammarTree:
         if symbol_name not in self.min_symbol_sizes:
             # Avoid infinite recursion by setting a large min size for now.
             self.min_symbol_sizes[symbol_name] = 1000000
-            
+
             # Find symbol_expr with minimum size.
+            if symbol_name not in self.symbols:
+                raise ValueError(f"Symbol '{symbol_name}' not found in grammar tree! {self.symbols.keys()}")
             symbol_exprs = self.symbols[symbol_name].items
             min_expr_size = 1000000
             for symbol_expr in symbol_exprs:
@@ -208,8 +256,8 @@ class GrammarTree:
 
     def compute_min_sizes(self):
         min_sizes = {}
-        for symbol in self.symbols:
-            min_sizes[symbol] = self.symbol_min_size(symbol)
+        for symbol_name in self.symbols:
+            min_sizes[symbol_name] = self.symbol_min_size(symbol_name)
         return min_sizes
 
 def parse_file(file_path: str) -> GrammarTree:
@@ -220,11 +268,11 @@ def parse_file(file_path: str) -> GrammarTree:
             name, expr = parse_line(line)
             tree.symbols[name] = expr
 
-    return tree  
+    return tree
 
 # There seems to be some internal problem with the internal pattern.en library
-# The first time you run conjugate(), it will throw an error. But after that, 
-# it will execute as expected. 
+# The first time you run conjugate(), it will throw an error. But after that,
+# it will execute as expected.
 def init_conjugation():
     try: # Random conjugation to execute
         conjugate('talk', '3sg')
@@ -242,7 +290,43 @@ if __name__ == '__main__':
     print(tree.min_symbol_sizes)
     print(tree.min_expr_sizes)
     #sentence = tree.generate_from_format("V|1#3sgp V V|1")
-    sentence = tree.generate_from_format("S")
-
+    #sentence = tree.generate_from_format("S")
+    print("Max 5")
+    sentence = tree.generate_from_symbol("S", max_size=5)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=5)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=5)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=5)
     print(f"Sentence: {sentence}")
 
+    print("Max 10")
+    sentence = tree.generate_from_symbol("S", max_size=10)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=10)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=10)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=10)
+    print(f"Sentence: {sentence}")
+
+    print("Max 15")
+    sentence = tree.generate_from_symbol("S", max_size=15)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=15)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=15)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=15)
+    print(f"Sentence: {sentence}")
+
+    print("Max 50")
+    sentence = tree.generate_from_symbol("S", max_size=50)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=50)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=50)
+    print(f"Sentence: {sentence}")
+    sentence = tree.generate_from_symbol("S", max_size=50)
+    print(f"Sentence: {sentence}")
