@@ -16,7 +16,7 @@ class Symbol:
         return f"Symbol({self.symbol_name}, terminal={self.is_terminal})"
 
 # Type alias for a symbol expression
-SymbolExpr = List[Symbol]
+SymbolExpr = Tuple[Symbol, ...]
 
 class WeightedList:
     def __init__(self, items: List[SymbolExpr], weights: List[float]):
@@ -48,8 +48,6 @@ def parse_line(line: str) -> Tuple[str, WeightedList]:
     symbol_exprs: List[SymbolExpr] = []
     symbol_expr_weights: List[float] = []
 
-    curr_expr: SymbolExpr = []
-
     for symbol_product in rest.split(' | '):
         curr_expr = []
 
@@ -61,7 +59,8 @@ def parse_line(line: str) -> Tuple[str, WeightedList]:
             else:
                 curr_expr.append(Symbol(token, is_terminal=False))
 
-        symbol_exprs.append(curr_expr)
+        # Convert to tuple once expression is complete
+        symbol_exprs.append(tuple(curr_expr)) 
         symbol_expr_weights.append(float(tokens[0]))
 
     return (name, WeightedList(symbol_exprs, symbol_expr_weights))
@@ -70,6 +69,10 @@ class GrammarTree:
 
     def __init__(self):
         self.symbols: Dict[str, WeightedList] = {}
+        # Minimum generation sizes in terms of number of terminals.
+        self.min_symbol_sizes: Dict[str, int] = {}
+        # Store expression sizes as well to optimize generation speed.
+        self.min_expr_sizes: Dict[SymbolExpr, int] = {}
 
     def __repr__(self) -> str:
         return f"GrammarTree({self.symbols})"
@@ -172,6 +175,43 @@ class GrammarTree:
 
         return output
 
+    def expr_min_size(self, symbol_expr):
+        if symbol_expr not in self.min_expr_sizes:
+            # Avoid infinite recursion by setting a large min size for now.
+            self.min_expr_sizes[symbol_expr] = 1000000
+
+            min_size = 0
+            for symbol in symbol_expr:
+                if symbol.is_terminal:
+                    min_size += 1
+                else:
+                    min_size += self.symbol_min_size(symbol.symbol_name)
+            self.min_expr_sizes[symbol_expr] = min_size
+        return self.min_expr_sizes[symbol_expr]
+
+    def symbol_min_size(self, symbol_name):
+        # Compute minimum size if not already computed.
+        if symbol_name not in self.min_symbol_sizes:
+            # Avoid infinite recursion by setting a large min size for now.
+            self.min_symbol_sizes[symbol_name] = 1000000
+            
+            # Find symbol_expr with minimum size.
+            symbol_exprs = self.symbols[symbol_name].items
+            min_expr_size = 1000000
+            for symbol_expr in symbol_exprs:
+                cur_size = self.expr_min_size(symbol_expr)
+                if cur_size < min_expr_size:
+                    min_expr_size = cur_size
+            self.min_symbol_sizes[symbol_name] = min_expr_size
+
+        return self.min_symbol_sizes[symbol_name]
+
+    def compute_min_sizes(self):
+        min_sizes = {}
+        for symbol in self.symbols:
+            min_sizes[symbol] = self.symbol_min_size(symbol)
+        return min_sizes
+
 def parse_file(file_path: str) -> GrammarTree:
     tree = GrammarTree()
 
@@ -195,8 +235,14 @@ if __name__ == '__main__':
     init_conjugation()
 
     #tree = parse_file('cfg-test.cfg')
-    tree = parse_file('verb-test.cfg')
-    sentence = tree.generate_from_format("V|1#3sgp V V|1")
+    #tree = parse_file('verb-test.cfg')
+    #tree = parse_file('test_cfgs/simple_sentence.cfg')
+    tree = parse_file('../pcfg/brown-all-20240213-104843.pcfg')
+    tree.compute_min_sizes()
+    print(tree.min_symbol_sizes)
+    print(tree.min_expr_sizes)
+    #sentence = tree.generate_from_format("V|1#3sgp V V|1")
+    sentence = tree.generate_from_format("S")
 
     print(f"Sentence: {sentence}")
 
