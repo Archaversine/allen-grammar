@@ -95,10 +95,10 @@ class GrammarTree:
                 raise ValueError(f"Symbol '{symbol_name}' not found in grammar tree!")
             else:
                 print(f"ERROR: Symbol '{symbol_name}' not found in grammar tree!")
-                return ''
+                return '', 0
 
         if _curr_rec >= max_rec:
-            return '(recursion max)'
+            return '(recursion max)', 0
 
         output = ""
         size_mask = None
@@ -221,34 +221,69 @@ class GrammarTree:
 
         return output
 
-    def expr_min_size(self, symbol_expr):
+    def expr_min_size(self, symbol_expr, seen=None):
+        """Compute minimum size of a symbol expression.
+
+        Args:
+            symbol_expr: Tuple of symbols in the expression.
+            seen: List of expressions that have already been seen in the
+            computation of minimum sizes. Used to avoid infinite recursion.
+        """
+        if seen is not None and symbol_expr in seen:
+            return -1
         if symbol_expr not in self.min_expr_sizes:
             # Avoid infinite recursion by setting a large min size for now.
-            self.min_expr_sizes[symbol_expr] = 1000000
+            #self.min_expr_sizes[symbol_expr] = 1000000
 
             min_size = 0
             for symbol in symbol_expr:
                 if symbol.is_terminal:
                     min_size += 1
                 else:
-                    min_size += self.symbol_min_size(symbol.symbol_name)
-            self.min_expr_sizes[symbol_expr] = min_size
-        return self.min_expr_sizes[symbol_expr]
+                    if seen is None:
+                        seen = []
+                    new_seen = seen + [symbol_expr]
+                    symbol_size = self.symbol_min_size(symbol.symbol_name, new_seen)
+                    if symbol_size > 0:
+                        min_size += symbol_size
+                    else:
+                        min_size = -1
+                        break
+            if min_size > 0:
+                self.min_expr_sizes[symbol_expr] = min_size
+        if symbol_expr in self.min_expr_sizes:
+            return self.min_expr_sizes[symbol_expr]
+        else:
+            return -1
 
-    def symbol_min_size(self, symbol_name):
+    def symbol_min_size(self, symbol_name, seen=None):
+        """Compute minimum size of a symbol.
+
+        Args:
+            symbol_name: Name of the symbol (string).
+            seen: List of symbol names that have already been seen in the
+            computation of minimum sizes. Used to avoid infinite recursion.
+        """
+        if seen is not None and symbol_name in seen:
+            return -1
         # Compute minimum size if not already computed.
         if symbol_name not in self.min_symbol_sizes:
             # Avoid infinite recursion by setting a large min size for now.
-            self.min_symbol_sizes[symbol_name] = 1000000
+            #self.min_symbol_sizes[symbol_name] = 1000000
 
             # Find symbol_expr with minimum size.
             if symbol_name not in self.symbols:
                 raise ValueError(f"Symbol '{symbol_name}' not found in grammar tree! {self.symbols.keys()}")
             symbol_exprs = self.symbols[symbol_name].items
-            min_expr_size = 1000000
+            min_expr_size = None
+            if seen is None:
+                seen = []
+            new_seen = seen + [symbol_name]
             for symbol_expr in symbol_exprs:
-                cur_size = self.expr_min_size(symbol_expr)
-                if cur_size < min_expr_size:
+                cur_size = self.expr_min_size(symbol_expr, new_seen)
+                if symbol_name == 'SINV' and cur_size > 0:
+                    print(f"Symbol Expression: {symbol_expr}, Size: {cur_size}")
+                if cur_size > 0 and (min_expr_size is None or cur_size < min_expr_size):
                     min_expr_size = cur_size
             self.min_symbol_sizes[symbol_name] = min_expr_size
 
@@ -286,47 +321,16 @@ if __name__ == '__main__':
     #tree = parse_file('verb-test.cfg')
     #tree = parse_file('test_cfgs/simple_sentence.cfg')
     tree = parse_file('../pcfg/brown-all-20240213-104843.pcfg')
-    tree.compute_min_sizes()
-    print(tree.min_symbol_sizes)
-    print(tree.min_expr_sizes)
-    #sentence = tree.generate_from_format("V|1#3sgp V V|1")
-    #sentence = tree.generate_from_format("S")
-    print("Max 5")
-    sentence = tree.generate_from_symbol("S", max_size=5)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=5)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=5)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=5)
-    print(f"Sentence: {sentence}")
+    final_min_sizes = tree.compute_min_sizes()
+    import pprint
+    #pprint.pp(tree.min_symbol_sizes)
+    #pprint.pp(tree.min_expr_sizes)
+    ##sentence = tree.generate_from_format("V|1#3sgp V V|1")
+    ##sentence = tree.generate_from_format("S")
+    for size in [5, 10, 15, 50]:
+        print("Max {}".format(size))
+        for i in range(50):
+            sentence = tree.generate_from_symbol("S", max_size=size, max_rec=30)
+            #sentence = tree.generate_from_symbol("S", max_rec=30)
+            print(f"Sentence: {sentence}")
 
-    print("Max 10")
-    sentence = tree.generate_from_symbol("S", max_size=10)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=10)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=10)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=10)
-    print(f"Sentence: {sentence}")
-
-    print("Max 15")
-    sentence = tree.generate_from_symbol("S", max_size=15)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=15)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=15)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=15)
-    print(f"Sentence: {sentence}")
-
-    print("Max 50")
-    sentence = tree.generate_from_symbol("S", max_size=50)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=50)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=50)
-    print(f"Sentence: {sentence}")
-    sentence = tree.generate_from_symbol("S", max_size=50)
-    print(f"Sentence: {sentence}")
