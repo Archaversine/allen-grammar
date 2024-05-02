@@ -123,13 +123,22 @@ class GrammarTree:
             in symbol_expr
         ]
         gen_size = 0
-        for i, symbol in enumerate(symbol_expr):
-            min_left = sum(min_list[i+1:]) # minimum requirements for following symbols
+        # Mask of symbols that still need to be generated.
+        # Used both to track when to stop and remaining size requirements.
+        mask = [1] * len(symbol_expr)
+        output_list = [None] * len(symbol_expr)
+        while sum(mask) > 0:
+            # Find the next symbol to generate.
+            i = choice([i for i, m in enumerate(mask) if m == 1])
+            symbol = symbol_expr[i]
+            mask[i] = 0
+
+            # Compute min remaining requirements for current mask.
+            min_left = sum([mask*minsize for mask, minsize in zip(mask, min_list)])
 
             if symbol.is_terminal:
-                output += symbol.symbol_name + ' '
+                output_list[i] = symbol.symbol_name
                 gen_size += 1
-
             else:
                 if max_size > 0:
                     available_size = max_size - gen_size - min_left # current availability
@@ -140,10 +149,10 @@ class GrammarTree:
                                                             _curr_rec + 1,
                                                             error,
                                                             available_size)
-                output += recres
+                output_list[i] = recres
                 gen_size += recsize
 
-        return output, gen_size
+        return " ".join(output_list), gen_size
 
     def generate_from_sentence(self, symbol_names: List[str], max_rec=10, error=False) -> str:
         return ''.join([self.generate_from_symbol(name, max_rec, error) for name in symbol_names])
@@ -322,9 +331,6 @@ if __name__ == '__main__':
     #tree = parse_file('test_cfgs/simple_sentence.cfg')
     tree = parse_file('../pcfg/brown-all-20240213-104843.pcfg')
     final_min_sizes = tree.compute_min_sizes()
-    import pprint
-    #pprint.pp(tree.min_symbol_sizes)
-    #pprint.pp(tree.min_expr_sizes)
     ##sentence = tree.generate_from_format("V|1#3sgp V V|1")
     ##sentence = tree.generate_from_format("S")
     for size in [5, 10, 15, 50]:
