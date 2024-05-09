@@ -166,7 +166,6 @@ class GrammarTree:
             return ' '.join([self.generate_from_symbol(name, max_rec, 0, error)[0] for name in symbol_names])
         else:
             output = ""
-            size_mask = None
             min_list = [self.symbol_min_size(s) for s in symbol_names]
             gen_size = 0
 
@@ -222,47 +221,71 @@ class GrammarTree:
     # both instances, and the second does not.
     # Conjugation syntax: https://github.com/clips/pattern/wiki/pattern-en#verb-conjugation
     # Using a ' in front of a word will make it a terminal symbol
-    def generate_from_format(self, format: str, error=False) -> str:
+    def generate_from_format(self, format: str, max_rec=10, error=False, max_size=-1) -> Tuple[str,int]:
         tokens = format.split(' ')
-        reused_symbols = {}
+        mask = [1] * len(tokens)
+        output_list = [None] * len(tokens)
 
-        output = ""
+        # Compute list of minimum sizes for each token in the format.
+        if max_size > 0:
+            raw_tokens = [t.split('|')[0] for t in tokens]
+            min_list = [
+                (1 if t.startswith("'") else self.symbol_min_size(t))
+                for t
+                in raw_tokens
+            ]
+            gen_size = 0
+        
+        # Modify mask to remove later reused symbols.
+        # Mask increment first instance of mask for each reused instance.
+        # Concurrently construct a mapping from initial token ids to use indices.
+        use_indices = {} # token id -> list of used indices
+        for i, t in enumerate(tokens):
+            if t.startswith("'"):
+                continue
+            token_id = t.split('#')[0]
+            if token_id in use_indices:
+                use_indices[token_id].append(i)
+                mask[i] = 0
+                mask[use_indices[token_id][0]] += 1
+            else:
+                use_indices[token_id] = [i]
 
-        # Load reused symbols into dictionary
-        for token in tokens:
+        # Generate tokens
+        while sum(mask) > 0:
+            i = choice([i for i, m in enumerate(mask) if m > 0])
+            token = tokens[i]
+            token_id = token.split('#')[0]
+            mask[i] = 0
+
             if token.startswith("'"):
-                continue
-
-            token_identifier = token.split('#')[0]
-
-            if token_identifier in reused_symbols:
-                continue
-
-            if '|' in token:
-                [name, tag] = token.split('|')
-
-                generated = self.generate_from_symbol(name, error=error)
-
-                if '#' in tag:
-                    conjugation = tag.split('#')[1]
-                    generated = conjugate(lemma(generated.rstrip()), conjugation) + ' '
-
-                reused_symbols[token_identifier] = generated
+                output_list[i] = token[1:]
+                gen_size += 1
+            else:
+                # Compute min remaining requirements for current mask.
+                min_left = sum([mask*minsize for mask, minsize in zip(mask, min_list)])
+                
+                # Availibility for current generation, scaled to number of copies.
+                available_size = max_size - gen_size - min_left
+                ncopies = len(use_indices[token_id])
+                available_size = available_size // ncopies
+                
+                name = token.split('|')[0]
+                generated, recsize = self.generate_from_symbol(name,
+                                                               max_rec,
+                                                               0,
+                                                               error,
+                                                               available_size)
+                if '#' in token:
+                    conjugation = token.split('#')[1]
+                    generated = conjugate(lemma(generated.rstrip()), conjugation)
+                for j in use_indices[token_id]:
+                    output_list[j] = generated
+                    gen_size += recsize
 
         # Construct the actual sentence
-        for token in tokens:
-            if token.startswith("'"):
-                output += token[1:] + ' '
-                continue
-
-            token_identifier = token.split('#')[0]
-
-            if token_identifier in reused_symbols:
-                output += reused_symbols[token_identifier]
-            else:
-                output += self.generate_from_symbol(token_identifier, error=error)
-
-        return output
+        output = " ".join(output_list)
+        return output, gen_size
 
     def expr_min_size(self, symbol_expr, seen=None):
         """Compute minimum size of a symbol expression.
@@ -367,19 +390,28 @@ if __name__ == '__main__':
     tree.compute_min_sizes()
     ##sentence = tree.generate_from_format("V|1#3sgp V V|1")
     ##sentence = tree.generate_from_format("S")
-    print("")
-    print("Generating sentenes w/ generate_from_symbol")
-    for size in [5, 10, 15, 50]:
-        print("Max {}".format(size))
-        for i in range(50):
-            sentence = tree.generate_from_symbol("S", max_size=size, max_rec=30)
-            print(f"Sentence: {sentence}")
+    
+    #print("")
+    #print("Generating sentenes w/ generate_from_symbol")
+    #for size in [5, 10, 15, 50]:
+    #    print("Max {}".format(size))
+    #    for i in range(50):
+    #        sentence = tree.generate_from_symbol("S", max_size=size, max_rec=30)
+    #        print(f"Sentence: {sentence}")
+
+    #print("")
+    #print("Generating sentenes w/ generate_from_sentence")
+    #for size in [5, 10, 15, 50]:
+    #    print("Max {}".format(size))
+    #    for i in range(50):
+    #        sentence = tree.generate_from_sentence(["NP", "VP", "NP"], max_size=size, max_rec=30)
+    #        print(f"Sentence: {sentence}")
 
     print("")
-    print("Generating sentenes w/ generate_from_sentence")
+    print("Generating sentenes w/ generate_from_format")
     for size in [5, 10, 15, 50]:
         print("Max {}".format(size))
         for i in range(50):
-            sentence = tree.generate_from_sentence(["NP", "VP", "NP"], max_size=size, max_rec=30)
+            sentence = tree.generate_from_format("NP|1 V|1#3sgp NP|1", max_size=size, max_rec=30)
             print(f"Sentence: {sentence}")
 
