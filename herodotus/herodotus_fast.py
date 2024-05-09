@@ -106,9 +106,16 @@ class GrammarTree:
             size_mask = [self.expr_min_size(s) <= max_size
                          for s
                          in self.symbols[symbol_name].items]
-            if sum(size_mask) == 0:
+            # Compute minimum size of all unmasked expressions.
+            if sum([size*m
+                    for size, m
+                    in zip([self.expr_min_size(s)
+                            for s
+                            in self.symbols[symbol_name].items],
+                           size_mask)]) == 0:
                 raise ValueError(f"Symbol '{symbol_name}' cannot generate a sentence with maximum size {max_size}.")
         symbol_expr = self.symbols[symbol_name].random_symbol_expr(size_mask)
+        #symbol_expr = self.symbols[symbol_name].exp_random_symbol_expr(1.2, size_mask)
 
         # Keep track of generated size.
         # Will use this and minimum remaining requirements to compute current
@@ -154,8 +161,35 @@ class GrammarTree:
 
         return " ".join(output_list), gen_size
 
-    def generate_from_sentence(self, symbol_names: List[str], max_rec=10, error=False) -> str:
-        return ''.join([self.generate_from_symbol(name, max_rec, error) for name in symbol_names])
+    def generate_from_sentence(self, symbol_names: List[str], max_rec=10, error=False, max_size=-1) -> Tuple[str,int]:
+        if max_size <= 0:
+            return ' '.join([self.generate_from_symbol(name, max_rec, 0, error)[0] for name in symbol_names])
+        else:
+            output = ""
+            size_mask = None
+            min_list = [self.symbol_min_size(s) for s in symbol_names]
+            gen_size = 0
+
+            mask = [1] * len(symbol_names)
+            output_list = [None] * len(symbol_names)
+            while sum(mask) > 0:
+                # Find the next symbol to generate.
+                i = choice([i for i, m in enumerate(mask) if m == 1])
+                symbol_name = symbol_names[i]
+                mask[i] = 0
+
+                # Compute min remaining requirements for current mask.
+                min_left = sum([mask*minsize for mask, minsize in zip(mask, min_list)])
+                available_size = max_size - gen_size - min_left # current availability
+                recres, recsize = self.generate_from_symbol(symbol_name,
+                                                            max_rec,
+                                                            0,
+                                                            error,
+                                                            available_size)
+                gen_size += recsize
+
+                output_list[i] = recres
+            return " ".join(output_list), gen_size
 
     def generate_tree_from_symbol(self, symbol_name: str, max_rec=10, _curr_rec=0, error=False, exp=1) -> str:
         if symbol_name not in self.symbols:
@@ -330,13 +364,22 @@ if __name__ == '__main__':
     #tree = parse_file('verb-test.cfg')
     #tree = parse_file('test_cfgs/simple_sentence.cfg')
     tree = parse_file('../pcfg/brown-all-20240213-104843.pcfg')
-    final_min_sizes = tree.compute_min_sizes()
+    tree.compute_min_sizes()
     ##sentence = tree.generate_from_format("V|1#3sgp V V|1")
     ##sentence = tree.generate_from_format("S")
+    print("")
+    print("Generating sentenes w/ generate_from_symbol")
     for size in [5, 10, 15, 50]:
         print("Max {}".format(size))
         for i in range(50):
             sentence = tree.generate_from_symbol("S", max_size=size, max_rec=30)
-            #sentence = tree.generate_from_symbol("S", max_rec=30)
+            print(f"Sentence: {sentence}")
+
+    print("")
+    print("Generating sentenes w/ generate_from_sentence")
+    for size in [5, 10, 15, 50]:
+        print("Max {}".format(size))
+        for i in range(50):
+            sentence = tree.generate_from_sentence(["NP", "VP", "NP"], max_size=size, max_rec=30)
             print(f"Sentence: {sentence}")
 
