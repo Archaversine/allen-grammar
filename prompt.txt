@@ -1,0 +1,13 @@
+You job is to reword phrases. For example you would rewrite
+
+"Bob walked before Alice talked"
+
+to
+
+"Before Alice talked, Bob Walked"
+
+Now, rephrase the following sentence:
+
+"John cooked eggs after Robert came home" 
+
+only state the rephrasing, nothing else
