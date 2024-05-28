@@ -225,6 +225,7 @@ class GrammarTree:
         tokens = format.split(' ')
         mask = [1] * len(tokens)
         output_list = [None] * len(tokens)
+        gen_size = 0
 
         # Compute list of minimum sizes for each token in the format.
         if max_size > 0:
@@ -234,7 +235,6 @@ class GrammarTree:
                 for t
                 in raw_tokens
             ]
-            gen_size = 0
         
         # Modify mask to remove later reused symbols.
         # Mask increment first instance of mask for each reused instance.
@@ -262,13 +262,15 @@ class GrammarTree:
                 output_list[i] = token[1:]
                 gen_size += 1
             else:
-                # Compute min remaining requirements for current mask.
-                min_left = sum([mask*minsize for mask, minsize in zip(mask, min_list)])
-                
-                # Availibility for current generation, scaled to number of copies.
-                available_size = max_size - gen_size - min_left
-                ncopies = len(use_indices[token_id])
-                available_size = available_size // ncopies
+                if max_size > 0:
+                    # Compute min remaining requirements for current mask.
+                    min_left = sum([mask*minsize for mask, minsize in zip(mask, min_list)])
+                    # Availibility for current generation, scaled to number of copies.
+                    available_size = max_size - gen_size - min_left
+                    ncopies = len(use_indices[token_id])
+                    available_size = available_size // ncopies
+                else:
+                    available_size = -1
                 
                 name = token.split('|')[0]
                 generated, recsize = self.generate_from_symbol(name,
