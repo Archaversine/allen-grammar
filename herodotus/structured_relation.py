@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections import namedtuple
+
+import herodotus_fast as hero
+
 from relations import RELATION_STRS, RELATION_VERB_FORMS
 from structured_event import StructuredEvent
 
-import herodotus_fast as hero
 
 # TODO: shorten name.
 class StructuredRelationInstance:
@@ -66,3 +69,13 @@ class StructuredRelationInstance:
         event2 = StructuredEvent.generate(person2, tree, form2)
         return StructuredRelationInstance(relation, event1, event2) 
 
+    def __eq__(self, other):
+        return self.relation == other.relation and \
+            self.event1 == other.event1 and \
+            self.event2 == other.event2
+
+# TODO: make this a subclass of structuredrelationinstance so we can reuse
+RewordedRelationInstance = namedtuple(
+    "RewordedRelationInstance",
+    ["structured_relation", "reworded"],
+)

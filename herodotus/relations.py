@@ -19,6 +19,8 @@ RELATION_STRS = [
     "finishes",
     "finished_by",
     "equals",
+    "during",
+    "contains",
 ]
 
 # Mapping from Allen relation string to verb form of two involved events.
@@ -34,7 +36,28 @@ RELATION_VERB_FORMS = {
     "finishes": ("part", "part"),
     "finished_by": ("part", "part"),
     "equals": ("part", "part"),
+    # TODO: edit entries for "contains" and "during"
+    "contains": ("part", "part"),
+    "during": ("part", "part"),
 }
+
+RELATION_TO_SHORT = {
+    "precedes": "p",
+    "preceded_by": "P",
+    "meets": "m",
+    "met_by": "M",
+    "overlaps": "o",
+    "overlapped_by": "O",
+    "starts": "s",
+    "started_by": "S",
+    "finishes": "f",
+    "finished_by": "F",
+    "equals": "e",
+    "during": "d",
+    "contains": "D",
+}
+
+RELATION_FROM_SHORT = { v: k for k, v in RELATION_TO_SHORT.items() }
 
 # Python template used to reword relation outputs
 reword_template = PromptTemplate.from_template(

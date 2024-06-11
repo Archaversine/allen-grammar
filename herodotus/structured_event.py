@@ -41,3 +41,9 @@ class StructuredEvent:
         vp = tree.generate_from_format(f"V|1{form}")
         return StructuredEvent(person, vp, form)
 
+    def __eq__(self, other):
+        return self.person == other.person and self.vp == other.vp
+
+    def __hash__(self):
+        return hash((self.person, self.vp))
+

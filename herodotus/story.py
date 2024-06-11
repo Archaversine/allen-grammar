@@ -1,20 +1,17 @@
-from structured_relation import StructuredRelationInstance
-
-import herodotus_fast as hero
-import relations
-
-from collections import namedtuple
-from dotenv import load_dotenv
-from typing import List, Tuple
-
 import os
 import openai
 import random
 
+from dotenv import load_dotenv
+from typing import List, Tuple
 
-RewordedRelationInstance = namedtuple(
-    "RewordedRelationInstance",
-    ["structured_relation", "reworded"],
+import herodotus_fast as hero
+import relations
+
+from idris2_allen import run_idris2_allen, construct_relation_lookup
+from structured_relation import (
+    StructuredRelationInstance,
+    RewordedRelationInstance,
 )
 
 
@@ -69,24 +66,6 @@ def generate_story(n_sentences: int, tree: hero.GrammarTree):
     return story
 
 
-def generate_allen_questions(story: List[dict]) -> List[Tuple[str,str]]:
-    """Generates questions for the given story.
-
-    The questions will be generated based on the Allen relations in the story
-    and an Allen Interval Algebra implementation. The answers to the questions will
-    be a set of Allen internal relations.
-
-    Args:
-        story: The story to generate questions for.
-    """
-    # 1. Convert story to format matching Allen Interval Algebra implementation
-    # 2. Generate inferred relations
-    # 3. Group into source questions.
-    # 4. Generate questions for each inferred relation set for each event pair.
-    # TODO: complete
-    raise NotImplementedError("Not yet implemented.")
-
-
 def relation_set_to_yn_questions(relation_set):
     """Generates yes/no questions with the answers based on the given set of true relations.
 
@@ -98,6 +77,28 @@ def relation_set_to_yn_questions(relation_set):
         element is the answer.
     """
     raise NotImplementedError("Not yet implemented.")
+
+
+def generate_allen_questions(story: List[RewordedRelationInstance]) -> List[Tuple[str,str]]:
+    """Generates questions for the given story.
+
+    The questions will be generated based on the Allen relations in the story
+    and an Allen Interval Algebra implementation. The answers to the questions will
+    be a set of Allen internal relations.
+
+    Args:
+        story: The story to generate questions for.
+    """
+    # 1. Generate inferred relations from allen interval algebra implementation.
+    inferred_relations = run_idris2_allen(story)
+    # 2. Construct lookup table for each event-pair.
+    relation_lookup = construct_relation_lookup(inferred_relations)
+    print("Relation lookup table")
+    print(relation_lookup)
+    # 3. Generate questions for each inferred relation set for each event pair.
+    # TODO: complete
+    raise NotImplementedError("Not yet implemented.")
+
 
 
 if __name__ == '__main__':
@@ -113,5 +114,7 @@ if __name__ == '__main__':
         print(story)
 
         # Generate some questions, check that they look reasonable.
+        print("Generating questions...")
+        questions = generate_allen_questions(story)
         # TODO: add after implementing question generation.
 
