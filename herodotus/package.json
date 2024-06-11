@@ -1,0 +1,16 @@
+{
+  "name": "allen",
+  "version": "1.0.0",
+  "description": "Allen's Interval Algebra Python integration",
+  "main": "allen.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "allen",
+    "interval",
+    "algebra"
+  ],
+  "author": "archaversine",
+  "license": "MIT"
+}
