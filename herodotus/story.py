@@ -9,6 +9,7 @@ import herodotus_fast as hero
 import relations
 
 from idris2_allen import run_idris2_allen, construct_relation_lookup
+from relations import RELATION_STRS
 from structured_relation import (
     StructuredRelationInstance,
     RewordedRelationInstance,
@@ -66,17 +67,31 @@ def generate_story(n_sentences: int, tree: hero.GrammarTree):
     return story
 
 
-def relation_set_to_yn_questions(relation_set):
-    """Generates yes/no questions with the answers based on the given set of true relations.
+def lookup_table_to_yn_questions(relation_lookup) -> List[Tuple[str,str]]:
+    """Generates yes/no questions with the answers based on a relation lookup table.
 
     Args:
-        relation_set: The set of relations to generate questions for.
+        relation_lookup: A lookup table for each event pair and the inferred relations of the form
+            StructuredEvent -> StructuredEvent -> List[str]
 
     Returns:
-        A list of tuples where the first element is the question and the second
-        element is the answer.
+        A list of tuples where the first element is the question, the second
+        element is the answer, the third element is a tuple of the two
+        structured events.
     """
-    raise NotImplementedError("Not yet implemented.")
+    # TODO: structure code to track the source events for the question
+    qa_tuples = []
+    for event1, e1_lookup in relation_lookup.items():
+        e1_reference = event1.ke_str()
+        for event2, relations in e1_lookup.items():
+            e2_reference = event2.ke_str()
+            # Generate questions for each relation.
+            for relation in RELATION_STRS:
+                # Generate question based on relation.
+                question = f'Do the events {e1_reference} and {e2_reference} have the relation {relation}?'
+                answer = "yes" if relation in relations else "no"
+                qa_tuples.append((question, answer, (event1, event2)))
+    return qa_tuples
 
 
 def generate_allen_questions(story: List[RewordedRelationInstance]) -> List[Tuple[str,str]]:
@@ -96,9 +111,11 @@ def generate_allen_questions(story: List[RewordedRelationInstance]) -> List[Tupl
     print("Relation lookup table")
     print(relation_lookup)
     # 3. Generate questions for each inferred relation set for each event pair.
-    # TODO: complete
-    raise NotImplementedError("Not yet implemented.")
-
+    qa_tuples = lookup_table_to_yn_questions(relation_lookup)
+    print("qa_tuples")
+    for q, a, events in qa_tuples:
+        print(q, a, events)
+    return qa_tuples
 
 
 if __name__ == '__main__':

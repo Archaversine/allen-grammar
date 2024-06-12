@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import openai
+
+from langchain_core.prompts import PromptTemplate
+
 import herodotus_fast as hero
 
 class StructuredEvent:
@@ -25,6 +29,13 @@ class StructuredEvent:
         # Currently only used for informative purposes.
         # Later we may use this to convert the form if desired.
         self.form = form
+        # Lazy memoized evaluation of kind-of-event string.
+        self._ke_str = None
+        self._ke_template = PromptTemplate.from_template(
+            """
+            Please convert the following event into a atemporal generic event by changing only the main verb or auxiliary to the gerund (-ing) form but no copula (be / is / was). Do not include surrounding quotes. "{sentence}"
+            """
+        )
 
     def __str__(self):
         return f"{self.person} {self.vp}"
@@ -40,6 +51,26 @@ class StructuredEvent:
         """
         vp = tree.generate_from_format(f"V|1{form}")
         return StructuredEvent(person, vp, form)
+
+    def ke_str(self):
+        """Generates the event as a kind of event."""
+        # TODO: can we do this symbolically rather than relying on an LLM?
+        if self._ke_str is not None:
+            return self._ke_str
+
+        prompt = self._ke_template.format(sentence=self.__str__()) 
+        result = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": prompt},
+            ],
+        )
+        self._ke_str = result['choices'][0]['message']['content']
+        # Remove ending period if present.
+        if self._ke_str[-1] == ".":
+            self._ke_str = self._ke_str[:-1]
+
+        return self._ke_str
 
     def __eq__(self, other):
         return self.person == other.person and self.vp == other.vp

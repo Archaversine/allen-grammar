@@ -52,6 +52,12 @@ class StructuredRelationInstance:
             return f"{self.event2.person} stops {self.event2.vp} when {self.event1.person} stops {self.event1.vp}"
         elif self.relation == "equals":
             return f"{self.event1} exactly when {self.event2}"
+        elif self.relation == "during":
+            return f"The time when {self.event1} is contained during the time when {self.event2}"
+        elif self.relation == "contains":
+            return f"The time when {self.event1} contains the time when {self.event2}"
+        else:
+            raise ValueError(f"Unknown relation: {self.relation}")
 
     def __repr__(self):
         return f"StructuredRelationInstance({self.relation}, {self.event1}, {self.event2}: {self.__str__()})"
