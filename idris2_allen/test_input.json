@@ -1,0 +1,6 @@
+{
+    "intervals": ["a","b"],
+    "relations": [
+        {"from":"a","to":"b","rels":"p"}
+    ]
+}
