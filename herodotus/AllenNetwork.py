@@ -2,6 +2,7 @@ from typing import Optional, Set, Dict
 
 import os
 import json
+import uuid
 import subprocess
 
 # Python implementation of an allen interval
@@ -59,17 +60,20 @@ class AllenNetwork:
     # Using allen.js, update the allen network to have all the 
     # appropriate intervals between all the intervals
     def update(self) -> None:
-        with open("__allen_temp_input.json", 'w') as f:
+        input_name = f"{(uuid.uuid4())}.json"
+        output_name = f"{(uuid.uuid4())}.json"
+
+        with open(input_name, 'w') as f:
             f.write(self.to_json())
 
-        subprocess.run(["node", "allen.js", "file", "__allen_temp_input.json", "__allen_temp_output.json"])
+        subprocess.run(["node", "allen.js", "file", input_name, output_name])
 
-        with open("__allen_temp_output.json", 'r') as f:
+        with open(output_name, 'r') as f:
             self.from_json(f.read())
 
         # remove json files 
-        os.remove("__allen_temp_input.json")
-        os.remove("__allen_temp_output.json")
+        os.remove(input_name)
+        os.remove(output_name)
 
 if __name__ == '__main__':
     print("Testing AllenNetwork.py...")
