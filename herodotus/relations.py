@@ -3,8 +3,7 @@ import openai
 
 import herodotus_fast as hero
 
-from dotenv import load_dotenv
-from langchain_core.prompts import PromptTemplate
+from llm import init_llm, reword
 
 # List of all possible Allen relations in string form.
 RELATION_STRS = [
@@ -35,23 +34,6 @@ RELATION_VERB_FORMS = {
     "finished_by": ("part", "part"),
     "equals": ("part", "part"),
 }
-
-# Python template used to reword relation outputs
-reword_template = PromptTemplate.from_template(
-    '''
-    Your job is to reword phrases. For example you might rewrite
-
-    \"Bob walked before alice talked\"
-
-    as \"Before Alice talked, Bob walked\"
-
-    Now, rephrase the following sentence:
-
-    \"{sentence}\"
-
-    only state the rephrasing, nothing else.
-    '''
-)
 
 
 # Given two names, return a sentence where the first name commits an action
@@ -89,38 +71,28 @@ def finished_by(tree: hero.GrammarTree, name1: str, name2: str) -> str:
 def equals(tree: hero.GrammarTree, name1: str, name2: str) -> str:
     return tree.generate_from_format(f"'{name1} 'V|1#part 'exactly 'when '{name2} V|2#part")
 
-# Use ChatGPT to reword a sentence whilst preserving the temporal logic
-def reword(text: str) -> str:
-    # TODO: generalize this to other LLMs
-    prompt = reword_template.format(sentence=text)
-    result = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": prompt}
-        ]
-    )
-    return result["choices"][0]["message"]["content"]
 
 if __name__ == '__main__':
-    load_dotenv()
-    openai.api_key = os.getenv('OPENAI_API_KEY')
+    # TODO: make this a command line argument
+    LLM_MODEL = "gpt-3.5-turbo"
+    init_llm(LLM_MODEL)
     hero.init_conjugation()
     tree = hero.parse_file('verb-test.cfg')
 
     for _ in range(5):
         generated = precedes(tree, 'Bob', 'Alice')
         print(f"Generated: {generated}")
-        print(f"Reworded: {reword(generated)}")
+        print(f"Reworded: {reword(generated, LLM_MODEL)}")
     #generated = "Bob walked before Alice talked"
     #print(f"Generated: {generated}")
-    #print(f"Reworded: {reword(generated)}")
+    #print(f"Reworded: {reword(generated, LLM_MODEL)}")
 
     print('-' * 20)
 
     for _ in range(5):
         generated = meets(tree, 'Bob', 'Alice')
         print(f"Generated: {generated}")
-        print(f"Reworded: {reword(generated)}")
+        print(f"Reworded: {reword(generated, LLM_MODEL)}")
     #generated = "Bob stops walking as Alice starts to talk"
     #print(f"Generated: {generated}")
-    #print(f"Reworded: {reword(generated)}")
+    #print(f"Reworded: {reword(generated, LLM_MODEL)}")

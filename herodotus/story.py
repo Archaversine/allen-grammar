@@ -11,6 +11,7 @@ import os
 import openai
 import random
 
+from llm import init_llm, reword
 
 RewordedRelationInstance = namedtuple(
     "RewordedRelationInstance",
@@ -18,7 +19,7 @@ RewordedRelationInstance = namedtuple(
 )
 
 
-def generate_story_sentence(relation_str, p1, p2, tree):
+def generate_story_sentence(relation_str, p1, p2, tree, model_name):
     """Generates a sentence for a story.
 
     A sentence is generated based on the given relation function, the two
@@ -30,13 +31,14 @@ def generate_story_sentence(relation_str, p1, p2, tree):
         p1: The first person in the sentence.
         p2: The second person in the sentence.
         tree: The grammar tree to use for generating the sentence.
+        model_name: The LLM model to use for rewording the sentence.
     """
     generated = StructuredRelationInstance.generate(relation_str, p1, p2, tree)
-    reworded = relations.reword(generated)
+    reworded = reword(generated, model_name)
     return RewordedRelationInstance(generated, reworded)
 
 
-def generate_story(n_sentences: int, tree: hero.GrammarTree):
+def generate_story(n_sentences: int, tree: hero.GrammarTree, model_name: str):
     """Generates a story of n_sentences sentences.
 
     Each sentence will represent a single Allen relation which is randomly selected.
@@ -54,6 +56,7 @@ def generate_story(n_sentences: int, tree: hero.GrammarTree):
     Args:
         n_sentences: The number of sentences to generate.
         tree: The grammar tree to use for generating events.
+        model_name: The LLM model to use for rewording the sentence.
     """
     # TODO: generate people from larger list
     people = ["Alice", "Bob"]
@@ -64,7 +67,7 @@ def generate_story(n_sentences: int, tree: hero.GrammarTree):
         p1 = people[0]
         p2 = people[1]
         relation = random.choice(relations.RELATION_STRS)
-        story_sentence = generate_story_sentence(relation, p1, p2, tree)
+        story_sentence = generate_story_sentence(relation, p1, p2, tree, model_name)
         story.append(story_sentence)
     return story
 
@@ -101,15 +104,15 @@ def relation_set_to_yn_questions(relation_set):
 
 
 if __name__ == '__main__':
-    load_dotenv()
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    LLM_MODEL = "gpt-3.5-turbo"
+    init_llm(LLM_MODEL)
     hero.init_conjugation()
     tree = hero.parse_file("verb-test.cfg")
 
     # Generate some stories, check that they look reasonable.
     for length in range(1, 6):
         print(f"Generating story of length {length}")
-        story = generate_story(length, tree)
+        story = generate_story(length, tree, LLM_MODEL)
         print(story)
 
         # Generate some questions, check that they look reasonable.
